@@ -8,7 +8,6 @@ A blazing fast, ultra-smooth virtual terminal pet built with **Go** and the **Bu
 
 * **Zero Flicker:** Uses double-buffering terminal rendering for buttery-smooth animations.
 * **Low Footprint:** Compiles into a single native binary with near 0% CPU idle usage.
-* **Dynamic Groove:** Pressing `d` makes Puchi drop his body lines and break out a 4-step dynamic choreography loop with custom musical accents (`♫`, `♬`).
 * **Fortune-Powered:** Pressing `s` makes Puchi speak short quotes directly from your system's `fortune` database.
 * **Persistent Speech:** Text wraps safely downward and freezes on screen so you can read fortunes completely at your own pace without jittering the layout walls.
 
