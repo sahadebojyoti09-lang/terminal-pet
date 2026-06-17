@@ -53,16 +53,18 @@ type model struct {
 	speech       string
 	actionTimer  int
 	isBlinking   bool
+	isInteracting bool // NEW: Track interaction animation state
 }
 
 func initialModel() model {
 	return model{
 		frame:        0,
-		hunger:       30, 
-		happiness:    70, 
+		hunger:       30,
+		happiness:    70,
 		speech:       "Mwahaha! I am alive inside your terminal!",
 		actionTimer:  12, // display initial message for a bit
 		isBlinking:   false,
+		isInteracting: false,
 	}
 }
 
@@ -83,13 +85,21 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.happiness = min(100, m.happiness+5)
 			m.speech = "✨ Nom nom! *crunchy noises* ✨"
 			m.actionTimer = 8 // Temporary message for feeding
+			m.isInteracting = true // NEW: Trigger happy face
 		case "p": // Pet
 			m.happiness = min(100, m.happiness+15)
 			m.speech = "❤️ Puchi purrs like a well-optimized system! ❤️"
 			m.actionTimer = 8 // Temporary message for petting
+			m.isInteracting = true // NEW: Trigger happy face
 		case "s": // Speak (Fortune)
-			m.speech = getFortune()
-			m.actionTimer = -1 // -1 freezes the text completely so you can read it!
+			// NEW: Refuse to speak if hungry
+			if m.hunger > 70 {
+				m.speech = "(Puchi grumbles about being too hungry to talk.)"
+				m.actionTimer = 16
+			} else {
+				m.speech = getFortune()
+				m.actionTimer = -1 // -1 freezes the text completely so you can read it!
+			}
 		}
 
 	// Dynamic animation updates
@@ -100,12 +110,13 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		} else if m.frame%12 == 1 {
 			m.isBlinking = false
 		}
-		
-		// Only clear the bubble if the timer is actively counting down (> 0)
+
+		// Handle speech bubble clearing
 		if m.actionTimer > 0 {
 			m.actionTimer--
 			if m.actionTimer == 0 {
 				m.speech = "..."
+				m.isInteracting = false // NEW: End happy face animation
 			}
 		}
 		return m, tick()
@@ -121,16 +132,27 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m model) View() string {
-	// 1. Determine ASCII representation based on states
+	// 1. Determine ASCII representation based on emotional states
 	var face string
-	if m.hunger > 70 {
-		face = "  (╥﹏╥)  \n /|     |\\" // Starving/Sad
+	if m.isInteracting {
+		// NEW: Happy Face animation
+		if m.frame%2 == 0 {
+			face = "  (*^‿^*) \n /|═❤️═|\\" // Happy Frame A
+		} else {
+			face = "  (*^‿^*) \n \\|═❤️═|/" // Happy Frame B
+		}
+	} else if m.hunger > 70 {
+		// Sad/Starving Face
+		face = "  (╥﹏╥)  \n /|═  ═|\\" 
 	} else if m.isBlinking {
-		face = "  (-‿ -)  \n /|     |\\" // Blinking
+		// Standard Blinking content face
+		face = "  (-‿ -)  \n /|═  ═|\\" 
 	} else if m.frame%2 == 0 {
-		face = "  (^‿ ^)  \n /|  ═  |\\" // Idle Frame A
+		// Standard Idle Frame A
+		face = "  (^‿ ^)  \n /|═  ═|\\" 
 	} else {
-		face = "  (^‿ ^)  \n  \\| ═ |/ " // Idle Frame B
+		// Standard Idle Frame B
+		face = "  (^‿ ^)  \n \\|═  ═|/ " 
 	}
 
 	// 2. Build the status bars
