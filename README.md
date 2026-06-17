@@ -33,9 +33,14 @@ Build it
 ```
 go build -o pet main.go
 ```
+Move to your local binaries path (it will ask for sudo password but it is nothing to worry about)
+```
+sudo cp pet /usr/local/bin/
+```
+Now you're set...
 LAUNCH!!!!
 ```
-./pet
+pet
 ```
 
 
