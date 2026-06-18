@@ -48,6 +48,7 @@ type model struct {
 	isSleeping    bool      
 	isAngry       bool      
 	isDancing     bool 
+	isBathing     bool 
 	angryTimer    int       
 	speech        string
 	actionTimer   int
@@ -64,6 +65,7 @@ func initialModel() model {
 		isSleeping:    false,
 		isAngry:       false,
 		isDancing:     false,
+		isBathing:     false,
 		angryTimer:    0,
 		speech:        "Mwahaha! I am alive inside your terminal!",
 		actionTimer:   12, 
@@ -89,6 +91,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.isSleeping = false
 				m.isAngry = true
 				m.isDancing = false
+				m.isBathing = false
 				m.angryTimer = 16 
 				m.happiness = max(0, m.happiness-25)
 				m.speech = "💢 HEY! Why did you wake me up?! (╬◣_◢)"
@@ -98,6 +101,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.isAngry = false
 				m.isInteracting = false
 				m.isDancing = false
+				m.isBathing = false
 				m.speech = "💤 Goodnight... going to sleep mode."
 				m.actionTimer = 8
 			}
@@ -109,6 +113,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, nil
 			}
 			m.isDancing = false
+			m.isBathing = false
 			m.hunger = max(0, m.hunger-20)
 			m.happiness = min(100, m.happiness+5)
 			m.speech = "✨ Nom nom! *crunchy noises* ✨"
@@ -122,6 +127,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, nil
 			}
 			m.isDancing = false
+			m.isBathing = false
 			m.happiness = min(100, m.happiness+15)
 			m.speech = "❤️ Puchi purrs like a well-optimized system! ❤️"
 			m.actionTimer = 8 
@@ -139,11 +145,26 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, nil
 			}
 			m.isDancing = true
+			m.isBathing = false
 			m.isInteracting = false
 			m.happiness = min(100, m.happiness+10)
 			m.energy = max(0, m.energy-8) 
 			m.speech = "🕺 *Bass Drops* Check out these layout moves! 🕺"
 			m.actionTimer = 16 
+
+		case "b": 
+			if m.isSleeping {
+				m.speech = "zzz (Don't splash water on a sleeping pet!)"
+				m.actionTimer = 8
+				return m, nil
+			}
+			m.isBathing = true
+			m.isDancing = false
+			m.isInteracting = false
+			m.happiness = min(100, m.happiness+10)
+			m.energy = max(0, m.energy-5)
+			m.speech = "🫧 *Scrub Scrub* Squeaky clean compilation! 🫧"
+			m.actionTimer = 12 
 
 		case "s": 
 			if m.isSleeping {
@@ -162,6 +183,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.isInteracting = false
 			} else {
 				m.isDancing = false
+				m.isBathing = false
 				m.speech = getFortune()
 				m.actionTimer = -1 
 				m.isInteracting = false
@@ -189,6 +211,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.speech = "..."
 				m.isInteracting = false 
 				m.isDancing = false
+				m.isBathing = false
 			}
 		}
 		return m, tick()
@@ -213,6 +236,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.isSleeping = true
 				m.isInteracting = false
 				m.isDancing = false
+				m.isBathing = false
 				m.speech = "⚠️ *Thud* (Puchi collapsed from pure exhaustion!)"
 				m.actionTimer = 16
 			}
@@ -253,6 +277,13 @@ func (m model) View() string {
 		default:
 			face = "    ノ( ^‿^ )ヘ ♬\n           "
 		}
+	} else if m.isBathing {
+		emotionText = "Bathing 🧼"
+		if m.frame%2 == 0 {
+			face = "    o  ✧  °  \n   ( ˘ᵕ˘ ) 🫧 "
+		} else {
+			face = "   °  o  ✧   \n   ( ˘ᵕ˘ ) 🫧 "
+		}
 	} else if m.isInteracting {
 		emotionText = "Happy ✨"
 		if m.frame%2 == 0 {
@@ -284,7 +315,7 @@ func (m model) View() string {
 	renderedBubble := bubbleStyle.Render(wrappedSpeech)
 	petRender := petStyle.Render(face)
 	statusRender := statusStyle.Render(fmt.Sprintf("%s\n%s\n%s\n\n%s", hungerBar, happyBar, energyBar, emotionStr))
-	helpRender := statusStyle.Render("\n[f] Feed  •  [p] Pet  •  [d] Dance  •  [s] Speak  •  [e] Sleep/Wake  •  [q] Quit")
+	helpRender := statusStyle.Render("\n[f] Feed  •  [p] Pet  •  [d] Dance  •  [b] Bath  •  [s] Speak  •  [e] Sleep/Wake  •  [q] Quit")
 
 	body := fmt.Sprintf("%s\n\n%s\n\n%s\n%s", renderedBubble, petRender, statusRender, helpRender)
 
