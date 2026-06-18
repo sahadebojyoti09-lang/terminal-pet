@@ -49,6 +49,10 @@ type model struct {
 	isAngry       bool      
 	isDancing     bool 
 	isBathing     bool 
+	isBrushing    bool 
+	inStyleMode   bool 
+	hairIndex     int  
+	clothIndex    int  
 	angryTimer    int       
 	speech        string
 	actionTimer   int
@@ -66,8 +70,12 @@ func initialModel() model {
 		isAngry:       false,
 		isDancing:     false,
 		isBathing:     false,
+		isBrushing:    false,
+		inStyleMode:   false,
+		hairIndex:     0,
+		clothIndex:    0,
 		angryTimer:    0,
-		speech:        "Mwahaha! I am alive inside your terminal!",
+		speech:        "Mwahaha! I am alive inside your terminal! 🔮",
 		actionTimer:   12, 
 		isBlinking:    false,
 		isInteracting: false,
@@ -82,9 +90,54 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 
 	case tea.KeyMsg:
+		if m.inStyleMode {
+			switch msg.String() {
+			case "c", "esc":
+				m.inStyleMode = false
+				m.speech = "Exited wardrobe setup mode. 👕"
+				m.actionTimer = 6
+				return m, nil
+			case "1": 
+				if m.isSleeping { return m, nil }
+				m.isBrushing = true
+				m.isDancing = false
+				m.isBathing = false
+				m.happiness = min(100, m.happiness+10)
+				m.speech = "✨ *Scrubba-scrubba* Keeping the bytecode clean! 🦷"
+				m.actionTimer = 10
+				return m, nil
+			case "2": 
+				if m.isSleeping { return m, nil }
+				m.hairIndex = (m.hairIndex + 1) % 4
+				hairs := []string{"Freshly shaved bald! 🥚", "Spiky Punk Fringe! ⚡", "Classy Top Hat! 🎩", "Minimalist Headband! 🎗️"}
+				m.speech = "💇 " + hairs[m.hairIndex]
+				m.actionTimer = 8
+				return m, nil
+			case "3": 
+				if m.isSleeping { return m, nil }
+				m.clothIndex = (m.clothIndex + 1) % 4
+				clothes := []string{"Comfy birthday suit! 🐳", "Classic Utility Jacket! 🧥", "Sharp Tuxedo Cross-Tie! 👔", "Warm Grid Scarf! 🧣"}
+				m.speech = "✨ " + clothes[m.clothIndex]
+				m.actionTimer = 8
+				return m, nil
+			case "q", "ctrl+c":
+				return m, tea.Quit
+			}
+		}
+
 		switch msg.String() {
 		case "q", "ctrl+c":
 			return m, tea.Quit
+
+		case "c": 
+			if m.isSleeping {
+				m.speech = "zzz (Wake him up before dressing him! 😴)"
+				m.actionTimer = 8
+				return m, nil
+			}
+			m.inStyleMode = true
+			m.speech = "🎨 Wardrobe Open! Select structural styles below."
+			m.actionTimer = -1
 
 		case "e": 
 			if m.isSleeping {
@@ -92,9 +145,10 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.isAngry = true
 				m.isDancing = false
 				m.isBathing = false
+				m.isBrushing = false
 				m.angryTimer = 16 
 				m.happiness = max(0, m.happiness-25)
-				m.speech = "💢 HEY! Why did you wake me up?! (╬◣_◢)"
+				m.speech = "Academic routine offline! Why did you wake me up?! (╬◣_◢)"
 				m.actionTimer = 12
 			} else {
 				m.isSleeping = true
@@ -102,32 +156,36 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.isInteracting = false
 				m.isDancing = false
 				m.isBathing = false
+				m.isBrushing = false
+				m.inStyleMode = false
 				m.speech = "💤 Goodnight... going to sleep mode."
 				m.actionTimer = 8
 			}
 
 		case "f": 
 			if m.isSleeping {
-				m.speech = "zzz (Puchi is fast asleep, don't shove food...)"
+				m.speech = "zzz (Puchi is fast asleep, don't shove food... 💤)"
 				m.actionTimer = 8
 				return m, nil
 			}
 			m.isDancing = false
 			m.isBathing = false
+			m.isBrushing = false
 			m.hunger = max(0, m.hunger-20)
 			m.happiness = min(100, m.happiness+5)
-			m.speech = "✨ Nom nom! *crunchy noises* ✨"
+			m.speech = "✨ Nom nom! *crunchy noises* 🍖"
 			m.actionTimer = 8 
 			m.isInteracting = true 
 
 		case "p": 
 			if m.isSleeping {
-				m.speech = "zzz (Puchi twitches his ears but stays asleep...)"
+				m.speech = "zzz (Puchi twitches his ears but stays asleep... 🐱)"
 				m.actionTimer = 8
 				return m, nil
 			}
 			m.isDancing = false
 			m.isBathing = false
+			m.isBrushing = false
 			m.happiness = min(100, m.happiness+15)
 			m.speech = "❤️ Puchi purrs like a well-optimized system! ❤️"
 			m.actionTimer = 8 
@@ -135,7 +193,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		case "d": 
 			if m.isSleeping {
-				m.speech = "zzz (Puchi is sleeping deep, he can't hear the beat...)"
+				m.speech = "zzz (Puchi is sleeping deep, he can't hear the beat... 🎷)"
 				m.actionTimer = 8
 				return m, nil
 			}
@@ -146,6 +204,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			m.isDancing = true
 			m.isBathing = false
+			m.isBrushing = false
 			m.isInteracting = false
 			m.happiness = min(100, m.happiness+10)
 			m.energy = max(0, m.energy-8) 
@@ -154,12 +213,13 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		case "b": 
 			if m.isSleeping {
-				m.speech = "zzz (Don't splash water on a sleeping pet!)"
+				m.speech = "zzz (Don't splash water on a sleeping pet! 🌊)"
 				m.actionTimer = 8
 				return m, nil
 			}
 			m.isBathing = true
 			m.isDancing = false
+			m.isBrushing = false
 			m.isInteracting = false
 			m.happiness = min(100, m.happiness+10)
 			m.energy = max(0, m.energy-5)
@@ -168,7 +228,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		case "s": 
 			if m.isSleeping {
-				m.speech = "zzz (Puchi snores softly...)"
+				m.speech = "zzz (Puchi snores softly... 💭)"
 				m.actionTimer = 8
 				return m, nil
 			}
@@ -184,7 +244,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			} else {
 				m.isDancing = false
 				m.isBathing = false
-				m.speech = getFortune()
+				m.isBrushing = false
+				m.speech = "💬 " + getFortune()
 				m.actionTimer = -1 
 				m.isInteracting = false
 			}
@@ -212,6 +273,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.isInteracting = false 
 				m.isDancing = false
 				m.isBathing = false
+				m.isBrushing = false
 			}
 		}
 		return m, tick()
@@ -237,6 +299,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.isInteracting = false
 				m.isDancing = false
 				m.isBathing = false
+				m.isBrushing = false
+				m.inStyleMode = false
 				m.speech = "⚠️ *Thud* (Puchi collapsed from pure exhaustion!)"
 				m.actionTimer = 16
 			}
@@ -248,87 +312,129 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m model) View() string {
-	var face string
+	var hairLine string
+	var faceLine string
+	var armLine string
 	var emotionText string
+
+	// No leading space hacks - left stripped for structural centering
+	switch m.hairIndex {
+	case 1: 
+		hairLine = "|||||||"
+	case 2: 
+		hairLine = "  ___  \n |___|"
+	case 3: 
+		hairLine = "[=====]"
+	default: 
+		hairLine = ""
+	}
 	
 	if m.isSleeping {
 		emotionText = "Sleeping 💤"
 		if m.frame%2 == 0 {
-			face = "    (─‿─) zzZ \n  -|═  ═|- " 
+			faceLine = "(- ‿ -) zZ" 
 		} else {
-			face = "    (─‿─)  zZ \n  -|═  ═|- " 
+			faceLine = "(- ‿ -)" 
 		}
 	} else if m.isAngry {
 		emotionText = "Grumpy 💢"
-		if m.frame%2 == 0 {
-			face = "   (╬◣_◢)  \n  ~|═  ═|~ "
-		} else {
-			face = "   (╬◣_◢)  \n  -|═  ═|- "
-		}
+		faceLine = "(> ◣ <)"
 	} else if m.isDancing {
 		emotionText = "Grooving 🕺"
 		switch m.frame % 4 {
-		case 0:
-			face = " ♬  ヘ( ^‿^ )ノ \n           "
-		case 1:
-			face = "    ヽ( ^‿^ )ノ ♫\n           "
-		case 2:
-			face = " ♫  ＼( ^‿^ )ノ \n           "
-		default:
-			face = "    ノ( ^‿^ )ヘ ♬\n           "
+		case 0:  faceLine = "/ ( ^ ‿ ^ )"
+		case 1:  faceLine = "( ^ ‿ ^ )\\"
+		case 2:  faceLine = "\\ ( ^ ‿ ^ )"
+		default: faceLine = "( ^ ‿ ^ )/"
 		}
 	} else if m.isBathing {
 		emotionText = "Bathing 🧼"
 		if m.frame%2 == 0 {
-			face = "    o  ✧  °  \n   ( ˘ᵕ˘ ) 🫧 "
+			faceLine = "o . ( ˘ ᵕ ˘ ) ."
 		} else {
-			face = "   °  o  ✧   \n   ( ˘ᵕ˘ ) 🫧 "
+			faceLine = ". o ( ˘ ᵕ ˘ )o."
+		}
+	} else if m.isBrushing {
+		emotionText = "Brushing ✨"
+		if m.frame%2 == 0 {
+			faceLine = "* ( - ‿ - ) *"
+		} else {
+			faceLine = "*( - ‿ - )*"
 		}
 	} else if m.isInteracting {
 		emotionText = "Happy ✨"
-		if m.frame%2 == 0 {
-			face = "  (っ◕‿◕)っ\n           " 
-		} else {
-			face = "   (っ◕‿◕)っ\n           " 
-		}
+		faceLine = "(っ. ‿ .)っ" 
 	} else if m.hunger > 70 || m.happiness < 30 {
 		emotionText = "Miserable 😭"
-		face = "   (╥﹏╥)  \n  -|═  ═|- " 
+		faceLine = "(; ﹏ ;)" 
 	} else {
 		emotionText = "Content 😐"
 		if m.isBlinking {
-			face = "   (-‿ -)  \n  -|═  ═|- " 
-		} else if m.frame%2 == 0 {
-			face = "   (^‿ ^)  \n  -|═  ═|- " 
+			faceLine = "(- ‿ -)" 
 		} else {
-			face = "   (^‿ ^)  \n  ~|═  ═|~ " 
+			faceLine = "(^ ‿ ^)" 
 		}
 	}
 
-	hungerBar := fmt.Sprintf("Hunger:    [%-10s] %d%%", repeatChar("█", m.hunger/10), m.hunger)
-	happyBar  := fmt.Sprintf("Happiness: [%-10s] %d%%", repeatChar("█", m.happiness/10), m.happiness)
-	energyBar := fmt.Sprintf("Energy:    [%-10s] %d%%", repeatChar("█", m.energy/10), m.energy)
+	if m.isDancing || m.isBathing || m.isBrushing || m.isInteracting {
+		armLine = ""
+	} else {
+		switch m.clothIndex {
+		case 1: 
+			armLine = "[▓▓|===|▓▓]"
+		case 2: 
+			armLine = "---| X |---"
+		case 3: 
+			if m.frame%2 == 0 {
+				armLine = "[===###===]"
+			} else {
+				armLine = "---|###|---"
+			}
+		default: 
+			if m.frame%2 == 0 {
+				armLine = "---|===|---"
+			} else {
+				armLine = "~~~|===|~~~"
+			}
+		}
+	}
+
+	// Dynamically center layers vertically using Lipgloss
+	assembledPet := lipgloss.JoinVertical(lipgloss.Center, hairLine, faceLine, armLine)
+
+	hungerBar := fmt.Sprintf("Hunger:    [%s] %d%%", renderBar(m.hunger), m.hunger)
+	happyBar  := fmt.Sprintf("Happiness: [%s] %d%%", renderBar(m.happiness), m.happiness)
+	energyBar := fmt.Sprintf("Energy:    [%s] %d%%", renderBar(m.energy), m.energy)
 	emotionStr := fmt.Sprintf("Emotion:   %s", emotionText)
 
 	wrappedSpeech := lipgloss.NewStyle().Width(40).Render(actionStyle.Render(m.speech))
 
 	renderedBubble := bubbleStyle.Render(wrappedSpeech)
-	petRender := petStyle.Render(face)
+	
+	// Enforce 15-width layout box over the pet asset to prevent panel shaking
+	petRender := petStyle.Width(15).Align(lipgloss.Center).Render(assembledPet)
 	statusRender := statusStyle.Render(fmt.Sprintf("%s\n%s\n%s\n\n%s", hungerBar, happyBar, energyBar, emotionStr))
-	helpRender := statusStyle.Render("\n[f] Feed  •  [p] Pet  •  [d] Dance  •  [b] Bath  •  [s] Speak  •  [e] Sleep/Wake  •  [q] Quit")
+	
+	var helpRender string
+	if m.inStyleMode {
+		helpRender = actionStyle.Render("\n[1] Brush Teeth  |  [2] Change Hair  |  [3] Clothes  |  [c] Back")
+	} else {
+		helpRender = statusStyle.Render("\n[f] Feed  |  [p] Pet  |  [d] Dance  |  [b] Bath  |  [c] Style  |  [s] Speak  |  [q] Quit")
+	}
 
 	body := fmt.Sprintf("%s\n\n%s\n\n%s\n%s", renderedBubble, petRender, statusRender, helpRender)
-
 	lockedFrame := frameStyle.Width(54).Render(body)
 
 	return lockedFrame + "\n"
 }
 
-func repeatChar(char string, count int) string {
-	s := ""
-	for i := 0; i < count; i++ { s += char }
-	return s
+func renderBar(value int) string {
+	filled := value / 10
+	if filled < 0 { filled = 0 }
+	if filled > 10 { filled = 10 }
+	return strings.Repeat("█", filled) + strings.Repeat(" ", 10-filled)
 }
+
 func min(a, b int) int { if a < b { return a }; return b }
 func max(a, b int) int { if a > b { return a }; return b }
 
