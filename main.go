@@ -104,7 +104,6 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 
 	case tea.KeyMsg:
-		// Core Emergency Check: If toilet count hits 100, lock all actions except toilet and quit
 		if m.feedCount >= 100 && msg.String() != "t" && msg.String() != "q" && msg.String() != "ctrl+c" {
 			m.speech = "🛑 CRITICAL ERROR: System Full! Force toilet break needed [t]! 🚽"
 			return m, nil
@@ -406,6 +405,7 @@ func (m model) View() string {
 
 	isEatingAction := m.isInteracting && (strings.Contains(m.speech, "Nom nom") || strings.Contains(m.speech, "snack"))
 
+	// Keep asset definitions perfectly clean and standard
 	switch m.hairIndex {
 	case 1: 
 		hairLine = "|||||||"
@@ -458,10 +458,9 @@ func (m model) View() string {
 		}
 	} else if m.isUsingToilet {
 		emotionText = "Relieved 🚽"
-		faceLine = "🚽 [ ˘ ᵕ ˘ ]"
+		faceLine = " [ ˘ ᵕ ˘ ]"
 	} else if isEatingAction {
 		emotionText = "Munching 🍪"
-		// Head only animation—body rendering is completely omitted below
 		if m.frame%2 == 0 {
 			faceLine = "(っ^ ‿ ^)っ 🍪" 
 		} else {
@@ -492,7 +491,6 @@ func (m model) View() string {
 		}
 	}
 
-	// Dynamic Base Weight Sizing logic for clothes/body
 	var currentCloth string
 	switch m.clothIndex {
 	case 1:  currentCloth = "▓▓▓▓▓"
@@ -501,26 +499,20 @@ func (m model) View() string {
 	default: currentCloth = "====="
 	}
 
-	// Calculate base background tracking bodies
 	if m.isUsingToilet {
 		armLine = "  [  🧻  ]  "
 	} else if !isEatingAction {
 		switch m.weight {
-		case 0:  armLine = "---|" + currentCloth + "|---"             // Normal
-		case 1:  armLine = "---|(" + currentCloth + ")|---"           // Plump
-		case 2:  armLine = "---|( " + currentCloth + " )|---"         // Chunky
-		case 3:  armLine = "===(  " + currentCloth + "  )==="         // Double Chonk
-		default: armLine = "(((   " + currentCloth + "   )))"         // Absolute Unit
+		case 0:  armLine = "---|" + currentCloth + "|---"             
+		case 1:  armLine = "---|(" + currentCloth + ")|---"           
+		case 2:  armLine = "---|( " + currentCloth + " )|---"         
+		case 3:  armLine = "===(  " + currentCloth + "  )==="         
+		default: armLine = "(((   " + currentCloth + "   )))"         
 		}
 	}
 
-	// Prevent normal bodies from rendering when unique single-row views or eating is triggered
 	if m.isDancing || m.isBathing || m.isBrushing || m.isPlayingBall || m.isInteracting || isEatingAction {
-		if !isEatingAction {
-			armLine = ""
-		} else {
-			armLine = "" // Force completely clear arm layer line during feeding cycle
-		}
+		armLine = ""
 	} else if m.isLoafMode && !m.isUsingToilet {
 		switch m.weight {
 		case 0:  armLine = "[===========]"
@@ -530,8 +522,19 @@ func (m model) View() string {
 		}
 	}
 
-	// Join the parts securely. If armLine is empty, JoinVertical drops it out smoothly.
-	assembledPet := lipgloss.JoinVertical(lipgloss.Center, hairLine, faceLine, armLine)
+	// MATHEMATICAL CENTERING ENGINE: Locks hair asset onto head by rendering it to exact head text boundaries
+	faceWidth := lipgloss.Width(faceLine)
+	var centeredHair string
+	if hairLine != "" {
+		centeredHair = lipgloss.NewStyle().Width(faceWidth).Align(lipgloss.Center).Render(hairLine)
+	}
+
+	var assembledPet string
+	if centeredHair != "" {
+		assembledPet = lipgloss.JoinVertical(lipgloss.Center, centeredHair, faceLine, armLine)
+	} else {
+		assembledPet = lipgloss.JoinVertical(lipgloss.Center, faceLine, armLine)
+	}
 
 	hungerBar := fmt.Sprintf("Hunger:    [%s] %d%%", renderBar(m.hunger), m.hunger)
 	happyBar  := fmt.Sprintf("Happiness: [%s] %d%%", renderBar(m.happiness), m.happiness)
@@ -553,9 +556,15 @@ func (m model) View() string {
 	
 	var helpRender string
 	if m.inStyleMode {
-		helpRender = actionStyle.Render("\n[1] Brush Teeth  |  [2] Change Hair  |  [3] Clothes  |  [c] Back")
+		helpRender = actionStyle.Render(
+			"\n[1] Brush Teeth  |  [2] Change Hair" +
+			"\n[3] Clothes      |  [c] Return Back",
+		)
 	} else {
-		helpRender = statusStyle.Render("\n[f] Feed  |  [p] Pet  |  [d] Dance  |  [b] Bath  |  [t] Toilet  |  [c] Style  |  [l] Loaf")
+		helpRender = statusStyle.Render(
+			"\n[f] Feed  |  [p] Pet    |  [d] Dance  |  [b] Bath" +
+			"\n[t] Toilet|  [s] Speak  |  [c] Style  |  [l] Loaf",
+		)
 	}
 
 	body := fmt.Sprintf("%s\n\n%s\n\n%s\n%s", renderedBubble, petRender, statusRender, helpRender)
