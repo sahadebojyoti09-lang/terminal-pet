@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"math/rand"
 	"os"
 	"os/exec"
 	"strings"
@@ -35,7 +36,7 @@ func getFortune() string {
 	cmd := exec.Command("fortune", "-s")
 	out, err := cmd.Output()
 	if err != nil {
-		return "Puchi is staring blankly into the terminal..."
+		return "Puchi is contemplating the nature of source code..."
 	}
 	return strings.TrimSpace(string(out))
 }
@@ -51,6 +52,9 @@ type model struct {
 	isBathing     bool 
 	isBrushing    bool 
 	inStyleMode   bool 
+	isLoafMode    bool 
+	isPlayingBall bool 
+	isUsingToilet bool
 	hairIndex     int  
 	clothIndex    int  
 	angryTimer    int       
@@ -58,6 +62,10 @@ type model struct {
 	actionTimer   int
 	isBlinking    bool
 	isInteracting bool 
+	
+	// Weight and Feeding Tracking Engine
+	feedCount     int
+	weight        int // Increases every 20 feeds
 }
 
 func initialModel() model {
@@ -72,6 +80,9 @@ func initialModel() model {
 		isBathing:     false,
 		isBrushing:    false,
 		inStyleMode:   false,
+		isLoafMode:    false,
+		isPlayingBall: false,
+		isUsingToilet: false,
 		hairIndex:     0,
 		clothIndex:    0,
 		angryTimer:    0,
@@ -79,10 +90,13 @@ func initialModel() model {
 		actionTimer:   12, 
 		isBlinking:    false,
 		isInteracting: false,
+		feedCount:     0,
+		weight:        0,
 	}
 }
 
 func (m model) Init() tea.Cmd {
+	rand.Seed(time.Now().UnixNano())
 	return tea.Batch(tick(), statusTick())
 }
 
@@ -90,6 +104,12 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 
 	case tea.KeyMsg:
+		// Core Emergency Check: If toilet count hits 100, lock all actions except toilet and quit
+		if m.feedCount >= 100 && msg.String() != "t" && msg.String() != "q" && msg.String() != "ctrl+c" {
+			m.speech = "🛑 CRITICAL ERROR: System Full! Force toilet break needed [t]! 🚽"
+			return m, nil
+		}
+
 		if m.inStyleMode {
 			switch msg.String() {
 			case "c", "esc":
@@ -102,6 +122,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.isBrushing = true
 				m.isDancing = false
 				m.isBathing = false
+				m.isPlayingBall = false
+				m.isUsingToilet = false
 				m.happiness = min(100, m.happiness+10)
 				m.speech = "✨ *Scrubba-scrubba* Keeping the bytecode clean! 🦷"
 				m.actionTimer = 10
@@ -129,23 +151,33 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "q", "ctrl+c":
 			return m, tea.Quit
 
-		case "c": 
-			if m.isSleeping {
-				m.speech = "zzz (Wake him up before dressing him! 😴)"
-				m.actionTimer = 8
-				return m, nil
+		case "l": 
+			m.isLoafMode = !m.isLoafMode
+			m.inStyleMode = false
+			m.isDancing = false
+			m.isBathing = false
+			m.isBrushing = false
+			m.isPlayingBall = false
+			m.isUsingToilet = false
+			if m.isLoafMode {
+				m.speech = "🍞 Loaf Mode ON: Puchi has engaged autopilot."
+			} else {
+				m.speech = "🛑 Loaf Mode OFF: Manual overrides restored."
 			}
+			m.actionTimer = 12
+
+		case "c": 
+			if m.isLoafMode { m.speech = "(Disable Loaf Mode [l] to open manual style settings)"; return m, nil }
+			if m.isSleeping { m.speech = "zzz (Wake him up before dressing him! 😴)"; return m, nil }
 			m.inStyleMode = true
 			m.speech = "🎨 Wardrobe Open! Select structural styles below."
 			m.actionTimer = -1
 
 		case "e": 
+			if m.isLoafMode { m.speech = "(Disable Loaf Mode [l] to handle sleep schedules)"; return m, nil }
 			if m.isSleeping {
 				m.isSleeping = false
 				m.isAngry = true
-				m.isDancing = false
-				m.isBathing = false
-				m.isBrushing = false
 				m.angryTimer = 16 
 				m.happiness = max(0, m.happiness-25)
 				m.speech = "Academic routine offline! Why did you wake me up?! (╬◣_◢)"
@@ -157,98 +189,94 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.isDancing = false
 				m.isBathing = false
 				m.isBrushing = false
-				m.inStyleMode = false
+				m.isUsingToilet = false
 				m.speech = "💤 Goodnight... going to sleep mode."
 				m.actionTimer = 8
 			}
 
 		case "f": 
-			if m.isSleeping {
-				m.speech = "zzz (Puchi is fast asleep, don't shove food... 💤)"
-				m.actionTimer = 8
-				return m, nil
-			}
+			if m.isLoafMode { m.speech = "(Puchi will eat when he feels like it!)"; return m, nil }
+			if m.isSleeping { m.speech = "zzz (Puchi is fast asleep, don't shove food... 💤)"; return m, nil }
 			m.isDancing = false
 			m.isBathing = false
 			m.isBrushing = false
+			m.isUsingToilet = false
 			m.hunger = max(0, m.hunger-20)
 			m.happiness = min(100, m.happiness+5)
+			
+			m.feedCount++
+			m.weight = m.feedCount / 20
+
 			m.speech = "✨ Nom nom! *crunchy noises* 🍖"
-			m.actionTimer = 8 
+			m.actionTimer = 16 
 			m.isInteracting = true 
 
-		case "p": 
-			if m.isSleeping {
-				m.speech = "zzz (Puchi twitches his ears but stays asleep... 🐱)"
-				m.actionTimer = 8
-				return m, nil
-			}
+		case "t": 
+			if m.isSleeping { m.speech = "zzz (Wake him up first!)"; return m, nil }
 			m.isDancing = false
 			m.isBathing = false
 			m.isBrushing = false
+			m.isInteracting = false
+			m.isPlayingBall = false
+			m.isUsingToilet = true
+			
+			m.weight = 0
+			m.feedCount = 0
+			m.speech = "🚽 *Flushhhhh* System cache cleared! Back to baseline speed. ✨"
+			m.actionTimer = 20
+
+		case "p": 
+			if m.isLoafMode { m.speech = "(Loaf Mode active: Puchi looks cozy and complete)"; return m, nil }
+			if m.isSleeping { m.speech = "zzz (Puchi twitches his ears but stays asleep... 🐱)"; return m, nil }
+			m.isDancing = false
+			m.isBathing = false
+			m.isBrushing = false
+			m.isUsingToilet = false
 			m.happiness = min(100, m.happiness+15)
 			m.speech = "❤️ Puchi purrs like a well-optimized system! ❤️"
 			m.actionTimer = 8 
 			m.isInteracting = true 
 
 		case "d": 
-			if m.isSleeping {
-				m.speech = "zzz (Puchi is sleeping deep, he can't hear the beat... 🎷)"
-				m.actionTimer = 8
-				return m, nil
-			}
-			if m.energy < 20 {
-				m.speech = "❌ (Puchi is way too tired to dance right now!)"
-				m.actionTimer = 8
-				return m, nil
-			}
+			if m.isLoafMode { m.speech = "(Puchi is in deep loaf format, no dancing allowed)"; return m, nil }
+			if m.isSleeping { m.speech = "zzz (Puchi is sleeping deep, he can't hear the beat... 🎷)"; return m, nil }
+			if m.energy < 20 { m.speech = "❌ (Puchi is way too tired to dance right now!)"; return m, nil }
 			m.isDancing = true
 			m.isBathing = false
 			m.isBrushing = false
 			m.isInteracting = false
+			m.isUsingToilet = false
 			m.happiness = min(100, m.happiness+10)
 			m.energy = max(0, m.energy-8) 
 			m.speech = "🕺 *Bass Drops* Check out these layout moves! 🕺"
 			m.actionTimer = 16 
 
 		case "b": 
-			if m.isSleeping {
-				m.speech = "zzz (Don't splash water on a sleeping pet! 🌊)"
-				m.actionTimer = 8
-				return m, nil
-			}
+			if m.isLoafMode { m.speech = "(Puchi washes behind his own ears in Loaf mode)"; return m, nil }
+			if m.isSleeping { m.speech = "zzz (Don't splash water on a sleeping pet! 🌊)"; return m, nil }
 			m.isBathing = true
 			m.isDancing = false
 			m.isBrushing = false
 			m.isInteracting = false
+			m.isUsingToilet = false
 			m.happiness = min(100, m.happiness+10)
 			m.energy = max(0, m.energy-5)
 			m.speech = "🫧 *Scrub Scrub* Squeaky clean compilation! 🫧"
 			m.actionTimer = 12 
 
 		case "s": 
-			if m.isSleeping {
-				m.speech = "zzz (Puchi snores softly... 💭)"
-				m.actionTimer = 8
-				return m, nil
-			}
-			if m.isAngry {
-				m.speech = "❌ (Puchi is too mad to talk right now!)"
-				m.actionTimer = 10
-				return m, nil
-			}
-			if m.hunger > 70 {
-				m.speech = "❌ (Puchi grumbles... too hungry to talk!)"
-				m.actionTimer = 10 
-				m.isInteracting = false
-			} else {
-				m.isDancing = false
-				m.isBathing = false
-				m.isBrushing = false
-				m.speech = "💬 " + getFortune()
-				m.actionTimer = -1 
-				m.isInteracting = false
-			}
+			if m.isSleeping { m.speech = "zzz (Puchi snores softly... 💭)"; return m, nil }
+			if m.isAngry { m.speech = "❌ (Puchi is too mad to talk right now!)"; return m, nil }
+			if m.hunger > 70 { m.speech = "❌ (Puchi grumbles... too hungry to talk!)"; return m, nil }
+			
+			m.isDancing = false
+			m.isBathing = false
+			m.isBrushing = false
+			m.isPlayingBall = false
+			m.isUsingToilet = false
+			m.speech = "💬 " + getFortune()
+			m.actionTimer = -1 
+			m.isInteracting = false
 		}
 
 	case tickMsg:
@@ -274,11 +302,18 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.isDancing = false
 				m.isBathing = false
 				m.isBrushing = false
+				m.isPlayingBall = false
+				m.isUsingToilet = false
 			}
 		}
 		return m, tick()
 
 	case statusTickMsg:
+		if m.feedCount >= 80 && m.feedCount < 100 && !m.isSleeping {
+			m.speech = "⚠️ [System Warning]: High buffer pressure detected. Toilet break suggested! 🚽"
+			m.actionTimer = 12
+		}
+
 		if m.isSleeping {
 			m.energy = min(100, m.energy+10) 
 			m.hunger = min(100, m.hunger+2)  
@@ -300,11 +335,63 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.isDancing = false
 				m.isBathing = false
 				m.isBrushing = false
+				m.isPlayingBall = false
+				m.isUsingToilet = false
 				m.inStyleMode = false
 				m.speech = "⚠️ *Thud* (Puchi collapsed from pure exhaustion!)"
 				m.actionTimer = 16
 			}
 		}
+
+		// AUTOPILOT AI ENGINE
+		if m.isLoafMode && !m.isSleeping && m.energy > 0 && m.feedCount < 100 {
+			if m.actionTimer <= 0 {
+				if m.hunger > 65 {
+					m.hunger = max(0, m.hunger-25)
+					m.feedCount++
+					m.weight = m.feedCount / 20
+					m.speech = "🤖 [Autopilot] Eating a snack by myself! 🍪"
+					m.actionTimer = 24 
+					m.isInteracting = true
+				} else if m.energy < 25 {
+					m.isSleeping = true
+					m.speech = "🤖 [Autopilot] Taking a quick power nap... 💤"
+					m.actionTimer = 32 
+				} else if m.happiness < 40 {
+					m.isBathing = true
+					m.happiness = min(100, m.happiness+15)
+					m.speech = "🤖 [Autopilot] Taking a self-care shower! 🧼"
+					m.actionTimer = 24 
+				} else if m.happiness < 60 && m.energy > 40 {
+					m.isPlayingBall = true
+					m.happiness = min(100, m.happiness+20)
+					m.speech = "🤖 [Autopilot] Chasing a rubber ball! ⚽"
+					m.actionTimer = 28 
+				} else {
+					roll := rand.Intn(20) 
+					switch roll {
+					case 0: 
+						m.isBrushing = true
+						m.hairIndex = rand.Intn(4)
+						m.clothIndex = rand.Intn(4)
+						m.speech = "🤖 [Autopilot] Redressing my system configs! ✨"
+						m.actionTimer = 24
+					case 1: 
+						m.speech = "💬 " + getFortune()
+						m.actionTimer = 32 
+					default:
+						m.speech = "..."
+						m.isInteracting = false 
+						m.isDancing = false
+						m.isBathing = false
+						m.isBrushing = false
+						m.isPlayingBall = false
+						m.isUsingToilet = false
+					}
+				}
+			}
+		}
+
 		return m, statusTick()
 	}
 
@@ -317,7 +404,8 @@ func (m model) View() string {
 	var armLine string
 	var emotionText string
 
-	// No leading space hacks - left stripped for structural centering
+	isEatingAction := m.isInteracting && (strings.Contains(m.speech, "Nom nom") || strings.Contains(m.speech, "snack"))
+
 	switch m.hairIndex {
 	case 1: 
 		hairLine = "|||||||"
@@ -361,9 +449,37 @@ func (m model) View() string {
 		} else {
 			faceLine = "*( - ‿ - )*"
 		}
+	} else if m.isPlayingBall {
+		emotionText = "Playing ⚽"
+		if m.frame%2 == 0 {
+			faceLine = "(っ^ ‿ ^)っ ◯"
+		} else {
+			faceLine = "◯ (っ^ ‿ ^)っ"
+		}
+	} else if m.isUsingToilet {
+		emotionText = "Relieved 🚽"
+		faceLine = "🚽 [ ˘ ᵕ ˘ ]"
+	} else if isEatingAction {
+		emotionText = "Munching 🍪"
+		// Head only animation—body rendering is completely omitted below
+		if m.frame%2 == 0 {
+			faceLine = "(っ^ ‿ ^)っ 🍪" 
+		} else {
+			faceLine = "(っ〇 ‿ 〇)っ 🍪" 
+		}
 	} else if m.isInteracting {
 		emotionText = "Happy ✨"
 		faceLine = "(っ. ‿ .)っ" 
+	} else if m.isLoafMode {
+		emotionText = "Loafing 🍞"
+		if m.isBlinking {
+			faceLine = "(- ‿ -)"
+		} else {
+			faceLine = "(っ- ‿ -)っ"
+		}
+	} else if m.feedCount >= 100 {
+		emotionText = "PANIC 🚨"
+		faceLine = "(╬〇 ◣ 〇)"
 	} else if m.hunger > 70 || m.happiness < 30 {
 		emotionText = "Miserable 😭"
 		faceLine = "(; ﹏ ;)" 
@@ -376,50 +492,70 @@ func (m model) View() string {
 		}
 	}
 
-	if m.isDancing || m.isBathing || m.isBrushing || m.isInteracting {
-		armLine = ""
-	} else {
-		switch m.clothIndex {
-		case 1: 
-			armLine = "[▓▓|===|▓▓]"
-		case 2: 
-			armLine = "---| X |---"
-		case 3: 
-			if m.frame%2 == 0 {
-				armLine = "[===###===]"
-			} else {
-				armLine = "---|###|---"
-			}
-		default: 
-			if m.frame%2 == 0 {
-				armLine = "---|===|---"
-			} else {
-				armLine = "~~~|===|~~~"
-			}
+	// Dynamic Base Weight Sizing logic for clothes/body
+	var currentCloth string
+	switch m.clothIndex {
+	case 1:  currentCloth = "▓▓▓▓▓"
+	case 2:  currentCloth = "[ X ]"
+	case 3:  currentCloth = "#####"
+	default: currentCloth = "====="
+	}
+
+	// Calculate base background tracking bodies
+	if m.isUsingToilet {
+		armLine = "  [  🧻  ]  "
+	} else if !isEatingAction {
+		switch m.weight {
+		case 0:  armLine = "---|" + currentCloth + "|---"             // Normal
+		case 1:  armLine = "---|(" + currentCloth + ")|---"           // Plump
+		case 2:  armLine = "---|( " + currentCloth + " )|---"         // Chunky
+		case 3:  armLine = "===(  " + currentCloth + "  )==="         // Double Chonk
+		default: armLine = "(((   " + currentCloth + "   )))"         // Absolute Unit
 		}
 	}
 
-	// Dynamically center layers vertically using Lipgloss
+	// Prevent normal bodies from rendering when unique single-row views or eating is triggered
+	if m.isDancing || m.isBathing || m.isBrushing || m.isPlayingBall || m.isInteracting || isEatingAction {
+		if !isEatingAction {
+			armLine = ""
+		} else {
+			armLine = "" // Force completely clear arm layer line during feeding cycle
+		}
+	} else if m.isLoafMode && !m.isUsingToilet {
+		switch m.weight {
+		case 0:  armLine = "[===========]"
+		case 1:  armLine = "[(===========)]"
+		case 2:  armLine = "[((===========))]"
+		default: armLine = "(((============)))"
+		}
+	}
+
+	// Join the parts securely. If armLine is empty, JoinVertical drops it out smoothly.
 	assembledPet := lipgloss.JoinVertical(lipgloss.Center, hairLine, faceLine, armLine)
 
 	hungerBar := fmt.Sprintf("Hunger:    [%s] %d%%", renderBar(m.hunger), m.hunger)
 	happyBar  := fmt.Sprintf("Happiness: [%s] %d%%", renderBar(m.happiness), m.happiness)
 	energyBar := fmt.Sprintf("Energy:    [%s] %d%%", renderBar(m.energy), m.energy)
-	emotionStr := fmt.Sprintf("Emotion:   %s", emotionText)
+	
+	weightText := fmt.Sprintf("%d kg", 4+m.weight*5)
+	if m.weight >= 4 { weightText += " (🚨 Unit)" }
+	
+	emotionStr := fmt.Sprintf("Emotion:   %-12s Weight: %s", emotionText, weightText)
 
 	wrappedSpeech := lipgloss.NewStyle().Width(40).Render(actionStyle.Render(m.speech))
-
 	renderedBubble := bubbleStyle.Render(wrappedSpeech)
 	
-	// Enforce 15-width layout box over the pet asset to prevent panel shaking
-	petRender := petStyle.Width(15).Align(lipgloss.Center).Render(assembledPet)
+	boxWidth := 16 + (m.weight * 2)
+	if isEatingAction { boxWidth = 22 }
+	
+	petRender := petStyle.Width(boxWidth).Align(lipgloss.Center).Render(assembledPet)
 	statusRender := statusStyle.Render(fmt.Sprintf("%s\n%s\n%s\n\n%s", hungerBar, happyBar, energyBar, emotionStr))
 	
 	var helpRender string
 	if m.inStyleMode {
 		helpRender = actionStyle.Render("\n[1] Brush Teeth  |  [2] Change Hair  |  [3] Clothes  |  [c] Back")
 	} else {
-		helpRender = statusStyle.Render("\n[f] Feed  |  [p] Pet  |  [d] Dance  |  [b] Bath  |  [c] Style  |  [s] Speak  |  [q] Quit")
+		helpRender = statusStyle.Render("\n[f] Feed  |  [p] Pet  |  [d] Dance  |  [b] Bath  |  [t] Toilet  |  [c] Style  |  [l] Loaf")
 	}
 
 	body := fmt.Sprintf("%s\n\n%s\n\n%s\n%s", renderedBubble, petRender, statusRender, helpRender)
