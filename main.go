@@ -308,7 +308,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, tick()
 
 	case statusTickMsg:
-		if m.feedCount >= 80 && m.feedCount < 100 && !m.isSleeping {
+		if m.feedCount >= 80 && m.feedCount < 100 && !m.isSleeping && !m.isLoafMode {
 			m.speech = "⚠️ [System Warning]: High buffer pressure detected. Toilet break suggested! 🚽"
 			m.actionTimer = 12
 		}
@@ -342,10 +342,23 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		}
 
-		// AUTOPILOT AI ENGINE
-		if m.isLoafMode && !m.isSleeping && m.energy > 0 && m.feedCount < 100 {
+		// AUTOPILOT AI ENGINE (Now with proactive toilet logic)
+		if m.isLoafMode && !m.isSleeping && m.energy > 0 {
 			if m.actionTimer <= 0 {
-				if m.hunger > 65 {
+				// 1. HIGH STORAGE EMERGENCIES: Dump data before hitting 100% panic threshold
+				if m.feedCount >= 80 {
+					m.isDancing = false
+					m.isBathing = false
+					m.isBrushing = false
+					m.isInteracting = false
+					m.isPlayingBall = false
+					m.isUsingToilet = true
+					
+					m.weight = 0
+					m.feedCount = 0
+					m.speech = "🤖 [Autopilot] High buffer pressure! Flushing system cache... 🚽"
+					m.actionTimer = 20
+				} else if m.hunger > 65 && m.feedCount < 100 {
 					m.hunger = max(0, m.hunger-25)
 					m.feedCount++
 					m.weight = m.feedCount / 20
@@ -405,7 +418,6 @@ func (m model) View() string {
 
 	isEatingAction := m.isInteracting && (strings.Contains(m.speech, "Nom nom") || strings.Contains(m.speech, "snack"))
 
-	// Keep asset definitions perfectly clean and standard
 	switch m.hairIndex {
 	case 1: 
 		hairLine = "|||||||"
@@ -458,7 +470,7 @@ func (m model) View() string {
 		}
 	} else if m.isUsingToilet {
 		emotionText = "Relieved 🚽"
-		faceLine = " [ ˘ ᵕ ˘ ]"
+		faceLine = "🚽 [ ˘ ᵕ ˘ ]"
 	} else if isEatingAction {
 		emotionText = "Munching 🍪"
 		if m.frame%2 == 0 {
@@ -522,7 +534,6 @@ func (m model) View() string {
 		}
 	}
 
-	// MATHEMATICAL CENTERING ENGINE: Locks hair asset onto head by rendering it to exact head text boundaries
 	faceWidth := lipgloss.Width(faceLine)
 	var centeredHair string
 	if hairLine != "" {
