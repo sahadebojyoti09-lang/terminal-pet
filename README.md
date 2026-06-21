@@ -58,19 +58,19 @@ Now you're completely set... LAUNCH!!!!
 pet
 ```
 
-##🪟 Windows Installation (via WSL)
+## 🪟 Windows Installation (via WSL)
 If you are on Windows, you can run Puchi inside a native Linux environment using the Windows Subsystem for Linux (WSL).
 
-###Step 1: Open WSL
+### Step 1: Open WSL
 Open your preferred terminal app (like Windows Terminal or PowerShell) and boot into your Linux system environment:
 
 ```
 wsl
 ```
-###Step 2: Environment Setup
+### Step 2: Environment Setup
 If you don't have a Linux distribution set up inside WSL yet, install a clean standard distribution (like Ubuntu or Debian) from the Microsoft Store or via command line, then access its terminal shell.
 
-###Step 3: Global Installation
+### Step 3: Global Installation
 Once inside your WSL Linux terminal prompt, simply follow the standard Linux Installation instructions above to update your packages, build the code, and link the binary!
 
 Once copied to /usr/local/bin/, typing pet inside your WSL environment will instantly wake your buddy up.
