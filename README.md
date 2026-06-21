@@ -3,6 +3,15 @@
 
 An interactive, keyboard-driven retro tamagotchi clone built entirely inside the terminal using Go (`Bubble Tea` & `LipGloss`). Puchi features live state machines, dynamic string geometry, dynamic weights, and an internal automation engine.
 
+## 📸 System Preview
+
+<p align="center">
+  <img src="puchi.png" alt="Terminal Pet Puchi Interface Screenshot" width="750px">
+</p>
+<p align="center"><em>Puchi, running optimized in a custom terminal environment.</em></p>
+
+---
+
 ---
 
 ## 🛠️ Operational Core Metrics
