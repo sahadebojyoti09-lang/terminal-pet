@@ -1,6 +1,51 @@
 # 🐾 Puchi - The Ultimate Terminal Pet
 
-A blazing fast, ultra-smooth virtual terminal pet built with **Go** and the **Bubble Tea** TUI framework. Puchi lives inside your terminal, blinks, gets hungry, dances, and dispenses random wisdom using `fortune`.
+
+An interactive, keyboard-driven retro tamagotchi clone built entirely inside the terminal using Go (`Bubble Tea` & `LipGloss`). Puchi features live state machines, dynamic string geometry, dynamic weights, and an internal automation engine.
+
+---
+
+## 🛠️ Operational Core Metrics
+
+Puchi's life cycle operates across four balancing system registers that shift over time via background system ticks:
+
+| Stat | Mechanics | Impact |
+| :--- | :--- | :--- |
+| **Hunger** | Increases by +3% every 3 seconds. | Exceeding 70% drops happiness and forces a "Miserable" state. |
+| **Happiness** | Decreases by -2% every 3 seconds. | Drops down based on high hunger or forced execution wakeups. |
+| **Energy** | Decreases by -5% every 6 seconds. | Hitting 0% forces an immediate system collapse into deep sleep. |
+| **Cache Buffer** | Increments with each food unit. | Reaching 100 units triggers a system panic / operation lock. |
+
+---
+
+## 🎮 Keybindings Directory
+
+### Core Interaction Layer
+* `[f]` **Feed Engine:** Reduces hunger by 20%, increases feed count/buffer, and temporarily shifts head geometry into eating mode (`🍪`).
+* `[p]` **Pet Protocol:** Boosts happiness by 15% and displays optimization love text.
+* `[s]` **Speak Routine:** Triggers a fast text pipe directly to your local system's `fortune` database binary to output short text parameters.
+* `[t]` **Flush Buffer:** Forces a toilet break, resets current internal feed cycles back to baseline, and clears any physical system expansion (weight calculations).
+
+### Active Routines
+* `[d]` **Dance Frame:** Triggers an animated, multi-frame layout shift across tracking loops. (Requires >20% Energy).
+* `[b]` **Bath Cycle:** Cleanses bytecode structures while triggering floating bubble graphics across the visual window.
+* `[e]` **Power Toggle:** Gracefully lets Puchi go to sleep to recover energy, or forces him awake into an angry routine (`╬◣_◢`).
+
+### System Modes
+* `[l]` **Loaf Mode (Autopilot):** Handover control loop to internal AI automation logic. Puchi handles his own eating, sleeping, maintenance, and bathroom cache flushing based on immediate structural stat hazards.
+* `[c]` **Style Wardrobe:** Suspends baseline tasks to reconfigure accessories:
+  * `[1]` Brush Teeth
+  * `[2]` Cycle Hair (Bald 🥚, Punk Fringe ⚡, Top Hat 🎩, Headband 🎗️)
+  * `[3]` Cycle Apparel (Suit 🐳, Jacket 🧥, Tuxedo 👔, Scarf 🧣)
+  * `[c / Esc]` Exit setup loop back to monitoring screen.
+* `[q / Ctrl+C]` **Kill Switch:** Gracefully exits the binary runtime and cleans the terminal shell.
+
+---
+
+## 🧬 Engineering & Layout Details
+
+* **Dynamic Alignment:** Accessory graphics utilize real-time cell width evaluations to dynamically snap directly over Puchi's head coordinate boundaries, preventing string layout shifting during asymmetric facial modifications.
+* **Proactive Caching:** In Loaf mode, the internal cron logic detects buffer pressure hazards at `80%` capacities and automatically diverts routines to execute system flushes before encountering hard panics.
 
 ---
 
